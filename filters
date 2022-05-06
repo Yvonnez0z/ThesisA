@@ -1,0 +1,59 @@
+from threading import currentThread
+from typing_extensions import assert_type
+import numpy as np
+import scipy as scipy
+from scipy.signal import butter ,filtfilt,irrnotch
+
+# PART 1 : Hample Filter 
+
+def hample_filter(raw_signal, win_size=51,sigma=0.4): #sigma need to be researched on 
+    copy_signal=np.copy(np.asarray(raw_signal))
+    n=len(raw_signal)
+    for i in range((win_size),(n-win_size)):
+        dataslice=copy_signal[i-win_size:i+win_size]
+        median_abs_dev=med_abs_dev(dataslice) # calculate the median deriviation 
+        median=np.median(dataslice) # calculate the median of the slice data 
+        if copy_signal[i] > median+(sigma*median_abs_dev): # define the outlier 
+            copy_signal[i]=median
+    return copy_signal
+
+
+def med_abs_dev(datapoints):
+    median=np.median(datapoints)
+    return np.median(np.abs(datapoints-median))
+
+#part 2 Butter worth filter for lowpass, highpass and bandpass
+def butter_lowpass_filter(cutoff_freq,sampling_rate,order=2):
+    Nyquist_freq=0.5*sampling_rate
+    normal_cutoff_freq=cutoff_freq/Nyquist_freq
+    b,a=butter(order,normal_cutoff_freq,btype='low',analog=False)
+    return b,a 
+
+def butter_highpass_filter(cutoff_freq,sampling_rate,order=2):
+    nyqs=0.5*sampling_rate
+    normal_cutoff_freq=cutoff_freq/nyqs
+    b,a=butter(order,normal_cutoff_freq,btype='high',analog=False)
+    return b,a 
+
+def butter_bandpass_filter(lowcutoff,highcutoff,sampling_rate,order=2):
+    nyqs=0.5*sampling_rate
+    low_normal_cutoff_freq=lowcutoff/nyqs
+    high_normal_cutoff_freq=highcutoff/nyqs
+    b,a=butter(order,[low_normal_cutoff_freq ,high_normal_cutoff_freq],btype='band')
+    return b,a 
+
+
+def filter_signal(data,cutoff_freq,sampling_rate,order=2,filtertype='lowpass'): #change the type here 
+    if filtertype.lower()=='lowpass':
+        b,a=butter_lowpass_filter(cutoff_freq,sampling_rate,order=order)
+    elif filtertype.lower()=='highpass':
+        b,a=butter_highpass_filter(cutoff_freq,sampling_rate,order=order)
+    elif filtertype.lower()=='bandpass':
+        assert type(cutoff_freq)==list or np.array,'please enter the cutoff frequency '
+        b,a =butter_bandpass_filter(cutoff_freq[0],cutoff_freq[1],sampling_rate,order=order)
+    elif filtertype.lower()=='notch':
+        b,a =irrnotch(cutoff_freq,Q=0.005,fs=sampling_rate)
+    filtered_data=filtfilt(b,a,data)       # need to be considered 
+    return filtered_data
+
+    
